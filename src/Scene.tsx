@@ -1,8 +1,8 @@
 import { OrbitControls } from "@react-three/drei";
 import { ThreeEvent, useThree } from "@react-three/fiber";
-import { a, SpringValue, useSprings } from "@react-spring/three";
-import { useCallback, useRef, useState } from "react";
-import { MathUtils } from "three";
+import { a, easings, SpringValue, useSprings } from "@react-spring/three";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MathUtils, Vector2 } from "three";
 import {
   AMBIENT_LIGHT_INTENSITY,
   BG_COLORS,
@@ -15,6 +15,7 @@ import {
   SPOT_LIGHT_INTENSITY,
   LIGHT_THEMES,
   EFFECTS,
+  SCALES,
 } from "./constants";
 import {
   pickRandomHash,
@@ -22,9 +23,20 @@ import {
   pickRandomColorWithTheme,
   sortRandom,
   easeInOutSine,
+  pickRandom,
 } from "./utils";
-import { EffectComposer, Sepia, Vignette } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
+import {
+  EffectComposer,
+  Sepia,
+  Vignette,
+  HueSaturation,
+  BrightnessContrast,
+  Bloom,
+  ChromaticAberration,
+} from "@react-three/postprocessing";
+import { BlendFunction, KernelSize } from "postprocessing";
+import { BASS, HITS } from "./App";
+import { start } from "tone";
 
 const bgColor = pickRandomHash(BG_COLORS);
 const mainTheme = pickRandomHash(LIGHT_THEMES);
@@ -85,6 +97,17 @@ const randomRetract = (
   };
 };
 
+const randomIdle = (i: number, rand: () => number) => {
+  return {
+    from: {
+      position: [0, 0, 0],
+    },
+    to: {
+      position: [2.5 - rand() * 5, 2.5 - rand() * 5, 0],
+    },
+  };
+};
+
 const objects = new Array(shapes).fill(null).map((o, i) => {
   const shape = pickRandomHash(SHAPES);
   const metalness = pickRandomHash(SHAPE_METALNESS);
@@ -132,9 +155,11 @@ function getShape(shape: number, args: any) {
 function Shapes({
   retractSprings,
   expandSprings,
+  idleSprings,
 }: {
   retractSprings: SpringValues[];
   expandSprings: SpringValues[];
+  idleSprings: SpringValues[];
 }) {
   return (
     <group>
@@ -142,19 +167,21 @@ function Shapes({
         const shape = getShape(o.shape, o.args);
 
         return (
-          <a.group key={i} {...(retractSprings[i] as any)}>
-            <a.mesh {...(expandSprings[i] as any)} castShadow receiveShadow>
-              {shape}
+          <a.group key={i} {...(idleSprings[i] as any)}>
+            <a.group {...(retractSprings[i] as any)}>
+              <a.mesh {...(expandSprings[i] as any)} castShadow receiveShadow>
+                {shape}
 
-              {/*
+                {/*
                 // @ts-ignore */}
-              <a.meshStandardMaterial
-                attach="material"
-                color={o.color}
-                roughness={o.roughness}
-                metalness={o.metalness}
-              />
-            </a.mesh>
+                <a.meshStandardMaterial
+                  attach="material"
+                  color={o.color}
+                  roughness={o.roughness}
+                  metalness={o.metalness}
+                />
+              </a.mesh>
+            </a.group>
           </a.group>
         );
       })}
@@ -193,6 +220,12 @@ const Scene = () => {
   const timer = useRef(0);
   const timerInterval = useRef<NodeJS.Timer>();
   const [timerState, setTimerState] = useState(0);
+  const [toneInitialized, setToneInitialized] = useState(false);
+  const [lastPlayedScale, setLastPlayedScale] = useState<number>();
+  const availableScales = useMemo(
+    () => SCALES.filter(({ index }) => index !== lastPlayedScale),
+    [lastPlayedScale]
+  );
 
   const [expandSprings, setExpand] = useSprings(shapes, (i) => ({
     ...random(i, getRandomNumber),
@@ -204,23 +237,59 @@ const Scene = () => {
     rotation: [0, 0, 0],
   }));
 
+  const [idleSprings, setIdle] = useSprings(shapes, (i) => ({
+    position: [0, 0, 0],
+    scale: [1, 1, 1],
+    rotation: [0, 0, 0],
+  }));
+
+  useEffect(() => {
+    BASS.forEach((bass) => bass.sampler.toDestination());
+    HITS.forEach((hit) => hit.sampler.toDestination());
+  }, []);
+
+  useEffect(() => {
+    const shuffledIndexes = sortRandom(objects.map((o, i) => i));
+    setIdle.start((i) => ({
+      ...randomIdle(i, getRandomNumber),
+      // delay: shuffledIndexes[i] * 20,
+      loop: { reverse: true },
+      config: { mass: 10, tension: 50, friction: 25 },
+    }));
+  }, [setIdle]);
+
+  const initializeTone = useCallback(async () => {
+    await start();
+    setToneInitialized(true);
+  }, []);
+
   const onPointerDown = useCallback(
-    (event: ThreeEvent<PointerEvent>) => {
+    async (event: ThreeEvent<PointerEvent>) => {
       event.stopPropagation();
 
-      if (!timerInterval.current) {
-        timerInterval.current = setInterval(() => {
-          timer.current += 0.25;
-          setTimerState(timer.current);
-        }, 10);
+      if (!toneInitialized) {
+        await initializeTone();
       }
 
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+        timerInterval.current = undefined;
+      }
+
+      timerInterval.current = setInterval(() => {
+        if (timer.current < 60) {
+          timer.current += 0.25;
+          setTimerState(timer.current);
+        }
+      }, 10);
+
+      setIdle.pause();
       setRetract.start((i) => ({
         ...randomRetract(i, Math.random, expandSprings[i]),
         config: { mass: 20, tension: 50, friction: 50 },
       }));
     },
-    [setRetract, expandSprings]
+    [setRetract, expandSprings, setIdle, toneInitialized, initializeTone]
   );
 
   const onPointerUp = useCallback(
@@ -228,11 +297,18 @@ const Scene = () => {
       event.stopPropagation();
 
       const tension = 200 + minMaxNumber(timer.current * 5, 0, 300);
-      const friction = 45 - minMaxNumber(timer.current * 0.1, 0, 10);
-      const delay = 40 - minMaxNumber(timer.current * 0.5, 0, 40);
+      const friction = 45 - minMaxNumber(timer.current * 0.2, 0, 10);
+      const delay = 40 - minMaxNumber(timer.current * 0.6, 0, 40);
       const shuffledIndexes = sortRandom(objects.map((o, i) => i));
 
+      const currentScale = pickRandom(availableScales);
+      setLastPlayedScale(currentScale.index);
+      BASS[currentScale.bass].sampler.triggerAttack("C#-1");
+      let currentShapeIndex = 0;
+      let currentScaleIndex = 0;
+
       setRetract.stop();
+      setIdle.resume();
       setExpand.start((i) => ({
         ...random(i, Math.random),
         delay: shuffledIndexes[i] * delay,
@@ -241,16 +317,59 @@ const Scene = () => {
           tension,
           friction,
         },
+        onStart: () => {
+          if (retractSprings.find((o) => o.position.isAnimating)) {
+            return;
+          }
+
+          currentShapeIndex++;
+
+          if (currentShapeIndex % 2 === 0) {
+            return;
+          }
+
+          if (currentScaleIndex > currentScale.sequence.length - 1) {
+            currentScaleIndex = 0;
+          }
+
+          HITS[currentScale.sequence[currentScaleIndex]].sampler.triggerAttack(
+            "C#-1"
+          );
+          currentScaleIndex++;
+          console.log(currentScaleIndex);
+          // const currentHit = pickRandom(HITS);
+
+          // const currentHit = pickRandom(
+          //   HITS.filter(
+          //     (hit, i) => !alreadySelectedHit.find((o) => o === hit.index)
+          //   )
+          // );
+
+          // alreadySelectedHit.push(currentHit.index);
+          // console.log(alreadySelectedHit);
+          // shuffledIndexes[i] * delay
+          // if (i % 2 === 0) {
+          //   currentHit.sampler.triggerAttack("C#-1");
+          // }
+        },
       }));
 
       if (timerInterval.current) {
         clearInterval(timerInterval.current);
         timerInterval.current = undefined;
-        timer.current = 0;
-        setTimerState(timer.current);
       }
+
+      timerInterval.current = setInterval(() => {
+        if (timer.current <= 0) {
+          clearInterval(timerInterval.current);
+          timerInterval.current = undefined;
+        }
+
+        timer.current -= tension / 500;
+        setTimerState(timer.current);
+      }, 10);
     },
-    [setExpand, setRetract]
+    [setExpand, setRetract, setIdle, availableScales, retractSprings]
   );
 
   const renderEffectComposer = useCallback((effect: number) => {
@@ -285,6 +404,15 @@ const Scene = () => {
             />
           </EffectComposer>
         );
+      case 2:
+        return (
+          <EffectComposer autoClear={false}>
+            <ChromaticAberration
+              blendFunction={BlendFunction.NORMAL}
+              offset={new Vector2(1, 1)}
+            />
+          </EffectComposer>
+        );
     }
   }, []);
 
@@ -304,11 +432,20 @@ const Scene = () => {
   return (
     <>
       <color attach="background" args={[bgColor]} />
-      <OrbitControls enabled={false} />
+      {/* <OrbitControls
+        enablePan={false}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      /> */}
       <Lights />
       {renderTouchArea()}
       {renderEffectComposer(effectFilter)}
-      <Shapes retractSprings={retractSprings} expandSprings={expandSprings} />
+
+      <Shapes
+        retractSprings={retractSprings}
+        expandSprings={expandSprings}
+        idleSprings={idleSprings}
+      />
     </>
   );
 };

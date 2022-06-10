@@ -7,7 +7,11 @@ export const DEFAULT_BPM = 110;
 
 export const RING_SEGMENTS = 80;
 
-export const EFFECTS = [0, 1];
+export const EFFECTS = [
+  ...new Array(16).fill(null).map(() => 0),
+  ...new Array(16).fill(null).map(() => 1),
+  2,
+];
 
 export const SHAPES = new Array(31).fill(null).map((o, i) => (i < 30 ? 0 : 1));
 export const SHAPE_COUNT = [20, 25, 30, 35, 40];
@@ -17,6 +21,34 @@ export const SHAPE_ROUGHNESS = [0.75, 1];
 export const AMBIENT_LIGHT_INTENSITY = [1.5, 2];
 export const POINT_LIGHT_INTENSITY = [0.5, 0.7, 0.9];
 export const SPOT_LIGHT_INTENSITY = [0.4, 0.6];
+
+export const SCALES = [
+  {
+    index: 0,
+    bass: 2,
+    sequence: [3, 0, 1, 4, 6, 0, 3, 5],
+  },
+  {
+    index: 1,
+    bass: 4,
+    sequence: [9, 2, 6, 4, 2, 3, 5, 10],
+  },
+  {
+    index: 2,
+    bass: 1,
+    sequence: [7, 4, 8, 1, 6, 7, 5, 9],
+  },
+  {
+    index: 3,
+    bass: 3,
+    sequence: [11, 0, 1, 4, 6, 0, 3, 10],
+  },
+  {
+    index: 4,
+    bass: 0,
+    sequence: [3, 0, 1, 4, 6, 0, 2, 3],
+  },
+];
 
 export const BG_COLORS = [
   "#A2CCB6",
