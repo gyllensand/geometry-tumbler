@@ -13,6 +13,8 @@ export const EFFECTS = [
   2,
 ];
 
+export const INSTRUMENTS = [0, 1]
+
 export const SHAPES = new Array(31).fill(null).map((o, i) => (i < 30 ? 0 : 1));
 export const SHAPE_COUNT = [20, 25, 30, 35, 40];
 export const SHAPE_METALNESS = [0.5, 0.75];
@@ -20,7 +22,7 @@ export const SHAPE_ROUGHNESS = [0.75, 1];
 
 export const AMBIENT_LIGHT_INTENSITY = [1.5, 2];
 export const POINT_LIGHT_INTENSITY = [0.5, 0.7, 0.9];
-export const SPOT_LIGHT_INTENSITY = [0.4, 0.6];
+export const SPOT_LIGHT_INTENSITY = [0.5, 0.7];
 
 export const SCALES = [
   {
@@ -47,6 +49,16 @@ export const SCALES = [
     index: 4,
     bass: 0,
     sequence: [3, 0, 1, 4, 6, 0, 2, 3],
+  },
+  {
+    index: 5,
+    bass: 5,
+    sequence: [11, 0, 1, 4, 6, 0, 3, 11],
+  },
+  {
+    index: 6,
+    bass: 6,
+    sequence: [3, 0, 4, 1, 4, 6, 0, 3],
   },
 ];
 

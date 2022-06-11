@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
-import Scene from "./Scene";
+import Scene, { instrument } from "./Scene";
 import { Sampler } from "tone";
 
 console.log(
@@ -8,7 +8,8 @@ console.log(
   "color: #d80fe7; font-size: 16px; background-color: #000000;"
 );
 
-const baseUrl = `${process.env.PUBLIC_URL}/audio/`;
+const path = instrument === 0 ? "piano" : "synth";
+const baseUrl = `${process.env.PUBLIC_URL}/audio/${path}/`;
 
 export interface Sample {
   index: number;
@@ -20,7 +21,7 @@ export const BASS = [
     index: 0,
     sampler: new Sampler({
       urls: {
-        1: "piano-a2sB.mp3",
+        1: `${path}-a2sB.mp3`,
       },
       baseUrl,
     }),
@@ -29,7 +30,7 @@ export const BASS = [
     index: 1,
     sampler: new Sampler({
       urls: {
-        1: "piano-c3B.mp3",
+        1: `${path}-c3B.mp3`,
       },
       baseUrl,
     }),
@@ -38,7 +39,7 @@ export const BASS = [
     index: 2,
     sampler: new Sampler({
       urls: {
-        1: "piano-d3sB.mp3",
+        1: `${path}-d3sB.mp3`,
       },
       baseUrl,
     }),
@@ -47,7 +48,7 @@ export const BASS = [
     index: 3,
     sampler: new Sampler({
       urls: {
-        1: "piano-g2sB.mp3",
+        1: `${path}-g2sB.mp3`,
       },
       baseUrl,
     }),
@@ -56,7 +57,25 @@ export const BASS = [
     index: 4,
     sampler: new Sampler({
       urls: {
-        1: "piano-g3B.mp3",
+        1: `${path}-g3B.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 5,
+    sampler: new Sampler({
+      urls: {
+        1: `${path}-f2B.mp3`,
+      },
+      baseUrl,
+    }),
+  },
+  {
+    index: 6,
+    sampler: new Sampler({
+      urls: {
+        1: `${path}-g2B.mp3`,
       },
       baseUrl,
     }),
@@ -68,7 +87,7 @@ export const HITS = [
     index: 0,
     sampler: new Sampler({
       urls: {
-        1: "piano-d6s.mp3",
+        1: `${path}-d6s.mp3`,
       },
       baseUrl,
     }),
@@ -77,7 +96,7 @@ export const HITS = [
     index: 1,
     sampler: new Sampler({
       urls: {
-        1: "piano-d7s.mp3",
+        1: `${path}-d7s.mp3`,
       },
       baseUrl,
     }),
@@ -86,7 +105,7 @@ export const HITS = [
     index: 2,
     sampler: new Sampler({
       urls: {
-        1: "piano-d6.mp3",
+        1: `${path}-d6.mp3`,
       },
       baseUrl,
     }),
@@ -95,7 +114,7 @@ export const HITS = [
     index: 3,
     sampler: new Sampler({
       urls: {
-        1: "piano-a5s.mp3",
+        1: `${path}-a5s.mp3`,
       },
       baseUrl,
     }),
@@ -104,7 +123,7 @@ export const HITS = [
     index: 4,
     sampler: new Sampler({
       urls: {
-        1: "piano-a6s.mp3",
+        1: `${path}-a6s.mp3`,
       },
       baseUrl,
     }),
@@ -113,7 +132,7 @@ export const HITS = [
     index: 5,
     sampler: new Sampler({
       urls: {
-        1: "piano-g5.mp3",
+        1: `${path}-g5.mp3`,
       },
       baseUrl,
     }),
@@ -122,7 +141,7 @@ export const HITS = [
     index: 6,
     sampler: new Sampler({
       urls: {
-        1: "piano-g6.mp3",
+        1: `${path}-g6.mp3`,
       },
       baseUrl,
     }),
@@ -131,7 +150,7 @@ export const HITS = [
     index: 7,
     sampler: new Sampler({
       urls: {
-        1: "piano-c6.mp3",
+        1: `${path}-c6.mp3`,
       },
       baseUrl,
     }),
@@ -140,7 +159,7 @@ export const HITS = [
     index: 8,
     sampler: new Sampler({
       urls: {
-        1: "piano-g7.mp3",
+        1: `${path}-g7.mp3`,
       },
       baseUrl,
     }),
@@ -149,7 +168,7 @@ export const HITS = [
     index: 9,
     sampler: new Sampler({
       urls: {
-        1: "piano-d5s.mp3",
+        1: `${path}-d5s.mp3`,
       },
       baseUrl,
     }),
@@ -158,7 +177,7 @@ export const HITS = [
     index: 10,
     sampler: new Sampler({
       urls: {
-        1: "piano-f5.mp3",
+        1: `${path}-f5.mp3`,
       },
       baseUrl,
     }),
@@ -167,7 +186,7 @@ export const HITS = [
     index: 11,
     sampler: new Sampler({
       urls: {
-        1: "piano-g5s.mp3",
+        1: `${path}-g5s.mp3`,
       },
       baseUrl,
     }),
