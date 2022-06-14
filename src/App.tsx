@@ -16,7 +16,7 @@ export interface Sample {
   sampler: Sampler;
 }
 
-export const BASS = [
+export const BASS: Sample[] = [
   {
     index: 0,
     sampler: new Sampler({
@@ -82,7 +82,7 @@ export const BASS = [
   },
 ];
 
-export const HITS = [
+export const HITS: Sample[] = [
   {
     index: 0,
     sampler: new Sampler({

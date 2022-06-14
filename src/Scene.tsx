@@ -1,6 +1,6 @@
-import { OrbitControls, Text } from "@react-three/drei";
-import { ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { a, easings, SpringValue, useSprings } from "@react-spring/three";
+import { OrbitControls } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
+import { a, SpringValue, useSprings } from "@react-spring/three";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MathUtils, Vector2 } from "three";
 import {
@@ -31,12 +31,9 @@ import {
   EffectComposer,
   Sepia,
   Vignette,
-  HueSaturation,
-  BrightnessContrast,
-  Bloom,
   ChromaticAberration,
 } from "@react-three/postprocessing";
-import { BlendFunction, KernelSize } from "postprocessing";
+import { BlendFunction } from "postprocessing";
 import { BASS, HITS } from "./App";
 import { Destination, Filter, start } from "tone";
 import { useGesture } from "react-use-gesture";
@@ -53,18 +50,6 @@ const effectFilter = pickRandomHash(EFFECTS);
 const pointIntensity = pickRandomHash(POINT_LIGHT_INTENSITY);
 const spotIntensity = pickRandomHash(SPOT_LIGHT_INTENSITY);
 const ambientIntensity = pickRandomHash(AMBIENT_LIGHT_INTENSITY);
-
-// @ts-ignore
-window.$fxhashFeatures = {
-  instrument,
-  bgColor,
-  lightingTheme: mainTheme,
-  themeColor,
-  themeColor2,
-  themeColor3,
-  themeColor4,
-  shapesCount: shapes,
-};
 
 interface SpringValues {
   position: SpringValue<number[]>;
@@ -116,6 +101,7 @@ const randomIdle = (i: number, rand: () => number) => {
 
 const objects = new Array(shapes).fill(null).map((o, i) => {
   const shape = pickRandomHash(SHAPES);
+  const args = getShapeArgs(shape);
   const metalness = pickRandomHash(SHAPE_METALNESS);
   const roughness = pickRandomHash(SHAPE_ROUGHNESS);
   const color1 = pickRandomColorWithTheme(themeColor, shapes);
@@ -131,14 +117,38 @@ const objects = new Array(shapes).fill(null).map((o, i) => {
       ? color3
       : color4;
 
+  const composition =
+    shape +
+    metalness +
+    roughness +
+    currentColor.charCodeAt(6) +
+    args.reduce((total, value) => (total += value), 0);
+
   return {
+    composition,
     color: currentColor,
     metalness,
     roughness,
     shape,
-    args: getShapeArgs(shape),
+    args,
   };
 });
+
+// @ts-ignore
+window.$fxhashFeatures = {
+  instrument,
+  bgColor,
+  lightingTheme: mainTheme,
+  shapeThemeColor: themeColor,
+  shapeThemeColor2: themeColor2,
+  shapeThemeColor3: themeColor3,
+  shapeThemeColor4: themeColor4,
+  shapeCount: shapes,
+  shapeComposition: objects.reduce(
+    (total, value) => (total += value.composition),
+    0
+  ),
+};
 
 function getShapeArgs(shape: number) {
   switch (shape) {
@@ -204,11 +214,6 @@ function Shapes({
 }
 
 function Lights({ aspect }: { aspect: number }) {
-  // console.log("pointIntensity", pointIntensity);
-  // console.log("spotIntensity", spotIntensity);
-  // console.log("ambientIntensity", ambientIntensity);
-  // console.log("mainTheme", mainTheme);
-
   return (
     <group
       scale={[
@@ -238,11 +243,10 @@ const Scene = () => {
     aspect: state.viewport.aspect,
   }));
 
-  const status = useRef("");
   const timer = useRef(0);
   const timerInterval = useRef<NodeJS.Timer>();
   const [timerState, setTimerState] = useState(0);
-  const [toneInitialized, setToneInitialized] = useState(false);
+  const toneInitialized = useRef(false);
   const [lastPlayedScale, setLastPlayedScale] = useState<number>();
   const availableScales = useMemo(
     () => SCALES.filter(({ index }) => index !== lastPlayedScale),
@@ -300,20 +304,12 @@ const Scene = () => {
 
   const initializeTone = useCallback(async () => {
     await start();
-    setToneInitialized(true);
+    toneInitialized.current = true;
   }, []);
-
-  // useFrame(() => {
-  //   status.current = `${ Math.round(timer.current)}`;
-  // });
 
   const onPointerDown = useCallback(
     async ({ event }) => {
       event.stopPropagation();
-      // status.current = "pointerdown";
-      if (!toneInitialized) {
-        await initializeTone();
-      }
 
       if (timerInterval.current) {
         clearInterval(timerInterval.current);
@@ -321,7 +317,6 @@ const Scene = () => {
       }
 
       timerInterval.current = setInterval(() => {
-        status.current = `down ${Math.round(timer.current)}`;
         if (timer.current < 60) {
           timer.current += 0.25;
           setTimerState(timer.current);
@@ -334,15 +329,12 @@ const Scene = () => {
         ...randomRetract(i, Math.random, expandSprings[i]),
         config: { mass: 20, tension: 50, friction: 50 },
       }));
+
+      if (!toneInitialized.current) {
+        await initializeTone();
+      }
     },
-    [
-      setRetract,
-      expandSprings,
-      setIdle,
-      setAudio,
-      toneInitialized,
-      initializeTone,
-    ]
+    [setRetract, expandSprings, setIdle, setAudio, initializeTone]
   );
 
   const onPointerUp = useCallback(
@@ -352,7 +344,7 @@ const Scene = () => {
       const randomSprings = new Array(shapes).fill(null).map((o, i) => ({
         ...random(i, Math.random),
       }));
-      // status.current = "pointerup";
+
       const tension = 200 + minMaxNumber(timer.current * 5, 0, 300);
       const friction = 45 - minMaxNumber(timer.current * 0.2, 0, 10);
       const delay = 40 - minMaxNumber(timer.current * 0.6, 0, 40);
@@ -387,7 +379,7 @@ const Scene = () => {
         onStart: () => {
           currentShapeIndex++;
 
-          if (currentShapeIndex % 2 === 0) {
+          if (currentShapeIndex % 3 !== 0) {
             return;
           }
 
@@ -409,13 +401,12 @@ const Scene = () => {
       }
 
       timerInterval.current = setInterval(() => {
-        status.current = `up ${Math.round(timer.current)}`;
         if (timer.current <= 0) {
           clearInterval(timerInterval.current);
           timerInterval.current = undefined;
         }
 
-        timer.current -= tension / 500;
+        timer.current -= tension / 200;
         setTimerState(timer.current);
       }, 10);
     },
@@ -469,12 +460,6 @@ const Scene = () => {
   const bind = useGesture({
     onPointerDown,
     onPointerUp,
-    // onDragEnd: () => {
-    //   if (timerInterval.current) {
-    //     clearInterval(timerInterval.current);
-    //     timerInterval.current = undefined;
-    //   }
-    // },
   });
 
   const renderTouchArea = useCallback(() => {
@@ -490,17 +475,10 @@ const Scene = () => {
   return (
     <>
       <color attach="background" args={[bgColor]} />
-      <OrbitControls
-        enablePan={false}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-      />
+      <OrbitControls enabled={false} />
       <Lights aspect={aspect} />
       {renderTouchArea()}
       {renderEffectComposer(effectFilter)}
-      <Text fontSize={100} color="black">
-        {status.current}
-      </Text>
       <Shapes
         aspect={aspect}
         retractSprings={retractSprings}
