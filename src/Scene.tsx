@@ -384,7 +384,7 @@ const Scene = () => {
           }
 
           if (currentScaleIndex > currentScale.sequence.length - 1) {
-            currentScaleIndex = 0;
+            currentScaleIndex = 1;
           }
 
           HITS[currentScale.sequence[currentScaleIndex]].sampler.triggerAttack(
